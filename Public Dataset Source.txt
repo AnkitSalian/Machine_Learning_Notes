@@ -1,0 +1,5 @@
+https://github.com/awesomedata/awesome-public-datasets
+
+https://www.data.gov.in/sector?page=1
+
+https://github.com/datameet
