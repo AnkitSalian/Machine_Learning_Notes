@@ -10,9 +10,15 @@ SET SQL_SAFE_UPDATES = 0;
 --    (ii) Vehicle_Company VARCHAR(25)
 --    (iii) Toll_Required BOOLEAN
 
+create table shipping_mode_dimen (
+	Ship_Mode VARCHAR(25),
+    Vehicle_Company VARCHAR(25),
+    Toll_Required BOOLEAN
+);
+
 -- 2. Make 'Ship_Mode' as the primary key in the above table.
-
-
+alter table shipping_mode_dimen
+add constraint primary key (Ship_Mode);
 -- -----------------------------------------------------------------------------------------------------------------
 -- DML Statements
 
@@ -20,39 +26,69 @@ SET SQL_SAFE_UPDATES = 0;
 --    (i)'DELIVERY TRUCK', 'Ashok Leyland', false
 --    (ii)'REGULAR AIR', 'Air India', false
 
+insert into shipping_mode_dimen (Ship_Mode, Vehicle_Company, Toll_Required) 
+values ('DELIVERY TRUCK', 'Ashok Leyland', false),
+('REGULAR AIR', 'Air India', false);
+
+select * from shipping_mode_dimen;
+
 -- 2. The above entry has an error as land vehicles do require tolls to be paid. Update the ‘Toll_Required’ attribute
 -- to ‘Yes’.
 
+update shipping_mode_dimen
+set Toll_Required = true
+where Ship_Mode = 'DELIVERY TRUCK';
+
 -- 3. Delete the entry for Air India.
 
+delete from shipping_mode_dimen
+where Ship_Mode = 'REGULAR AIR';
 
+select * from shipping_mode_dimen;
 -- -----------------------------------------------------------------------------------------------------------------
 -- Adding and Deleting Columns
 
 -- 1. Add another column named 'Vehicle_Number' and its data type to the created table. 
 
+alter table shipping_mode_dimen
+add column Vehicle_Number VARCHAR(20);
+
 -- 2. Update its value to 'MH-05-R1234'.
+
+UPDATE shipping_mode_dimen
+set Vehicle_Number = 'MH-05-R1234';
 
 -- 3. Delete the created column.
 
+alter table shipping_mode_dimen
+drop column Vehicle_Number;
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- Changing Column Names and Data Types
 
 -- 1. Change the column name ‘Toll_Required’ to ‘Toll_Amount’. Also, change its data type to integer.
 
+alter table shipping_mode_dimen
+change Toll_Required Toll_Amount int;
+
 -- 2. The company decides that this additional table won’t be useful for data analysis. Remove it from the database.
 
+drop table shipping_mode_dimen;
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- Session: Querying in SQL
 -- Basic SQL Queries
 
 -- 1. Print the entire data of all the customers.
+select * from cust_dimen;
 
 -- 2. List the names of all the customers.
 
+select Customer_Name from cust_dimen;
+
 -- 3. Print the name of all customers along with their city and state.
+
+select Customer_Name, City, State from cust_dimen;
 
 -- 4. Print the total number of customers.
 select count(*) as Total_Customers
@@ -60,54 +96,125 @@ from cust_dimen;
 
 -- 5. How many customers are from West Bengal?
 
+select count(1) as West_Bengal_Customer
+from cust_dimen
+where State = "West Bengal";
+
 -- 6. Print the names of all customers who belong to West Bengal.
 
+select Customer_Name as West_Bengal_Customer
+from cust_dimen
+where State = "West Bengal";
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- Operators
 
 -- 1. Print the names of all customers who are either corporate or belong to Mumbai.
 
+select Customer_Name 
+from cust_dimen
+where City = "Mumbai" or Customer_Segment = "Corporate";
+
 -- 2. Print the names of all corporate customers from Mumbai.
+
+select Customer_Name 
+from cust_dimen
+where City = "Mumbai" and Customer_Segment = "Corporate";
 
 -- 3. List the details of all the customers from southern India: namely Tamil Nadu, Karnataka, Telangana and Kerala.
 
+select * 
+from cust_dimen
+where State in ("Tamil Nadu", "Karnataka", "Telangana", "Kerala");
+
 -- 4. Print the details of all non-small-business customers.
+
+select * from cust_dimen
+where not Customer_Segment = 'SMALL BUSINESS';
 
 -- 5. List the order ids of all those orders which caused losses.
 
+select Ord_id, Profit from market_fact_full
+where Profit < 0;
+
 -- 6. List the orders with '_5' in their order ids and shipping costs between 10 and 15.
 
+select * from market_fact_full
+where Ord_id like "%\_5%" and Shipping_Cost between 10 and 15;
 
+select * from cust_dimen
+where City like "K%";
 -- -----------------------------------------------------------------------------------------------------------------
 -- Aggregate Functions
 
 -- 1. Find the total number of sales made.
 
+select count(Sales) as Toal_number_of_Sales from market_fact_full;
 -- 2. What are the total numbers of customers from each city?
 
+select City, count(Customer_Name) as Total_Number_Of_Customer from cust_dimen 
+group by City;
 -- 3. Find the number of orders which have been sold at a loss.
 
--- 4. Find the total number of customers from Bihar in each segment.
+select count(Ord_id) as "Number of Orders" from market_fact_full
+where Profit < 0;
+
+-- 4. Find the total number of customers from Mumbai in each segment.
+select Customer_Segment, count(Customer_Name) from cust_dimen
+where City = "Mumbai"
+group by Customer_Segment;
 
 -- 5. Find the customers who incurred a shipping cost of more than 50.
 
+select * from market_fact_full
+where Shipping_Cost > 50;
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- Ordering
 
 -- 1. List the customer names in alphabetical order.
 
+select Customer_Name from cust_dimen
+order by Customer_Name;
+
+select distinct Customer_Name from cust_dimen
+order by Customer_Name;
+
+select Customer_Name, State from cust_dimen
+order by State, Customer_Name;
+
 -- 2. Print the three most ordered products.
+
+select Prod_id, sum(Order_Quantity) as Total_Ordered_Products 
+from market_fact_full
+group by Prod_id
+order by Total_Ordered_Products desc
+limit 3;
 
 -- 3. Print the three least ordered products.
 
+select Prod_id, sum(Order_Quantity) as Total_Ordered_Products 
+from market_fact_full
+group by Prod_id
+order by Total_Ordered_Products
+limit 3;
+
 -- 4. Find the sales made by the five most profitable products.
 
+select Prod_id, sum(Profit) as Total_Profit 
+from market_fact_full
+group by Prod_id
+order by Total_Profit desc
+limit 5;
+
 -- 5. Arrange the order ids in the order of their recency.
+select Ord_id from market_fact_full
+order by Ord_id desc;
 
 -- 6. Arrange all consumers from Coimbatore in alphabetical order.
-
+select Customer_Name from cust_dimen
+where City = "Coimbatore"
+order by Customer_Name;
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- String and date-time functions
