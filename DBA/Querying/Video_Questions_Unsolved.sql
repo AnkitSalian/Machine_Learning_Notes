@@ -272,21 +272,49 @@ limit 1;
 
 -- 1. Find the names of all customers having the substring 'car'.
 
+select Customer_Name from cust_dimen
+where Customer_Name regexp "car";
+
 -- 2. Print customer names starting with A, B, C or D and ending with 'er'.
 
+select Customer_Name from cust_dimen
+where Customer_Name regexp "^[abcd].*er$";
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- Nested Queries
 
 -- 1. Print the order number of the most valuable order by sales.
+select * from market_fact_full
+where Sales = (
+	select max(Sales) from market_fact_full
+);
 
 -- 2. Return the product categories and subcategories of all the products which don’t have details about the product
 -- base margin.
+select Prod_id, Product_Category, Product_Sub_Category from prod_dimen
+where Prod_id in (select Prod_id from market_fact_full where Product_Base_Margin is null);
 
 -- 3. Print the name of the most frequent customer.
 
+select * from cust_dimen
+where Cust_id = (
+	select Cust_id from market_fact_full
+	group by Cust_id
+	order by count(Cust_id) desc
+	limit 1
+);
+
 -- 4. Print the three most common products.
 
+select * from prod_dimen
+where Prod_id in (
+	select Prod_id from (
+		select Prod_id from market_fact_full
+		group by Prod_id
+		order by count(Prod_id) desc
+		limit 3
+	) as Product_Data
+);
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- CTEs
@@ -294,9 +322,21 @@ limit 1;
 -- 1. Find the 5 products which resulted in the least losses. Which product had the highest product base
 -- margin among these?
 
+with least_losses as (
+	select * from market_fact_full
+	where Profit < 0
+) select * from least_losses
+order by Product_Base_Margin desc
+limit 5;
+
 -- 2. Find all low-priority orders made in the month of April. Out of them, how many were made in the first half of
 -- the month?
 
+with lowest_priorty as (
+	select * from orders_dimen
+    where Order_Priority = "LOW" and month(Order_Date) = 4
+) select * from lowest_priorty
+where day(Order_Date) between 1 and 15;
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- Views
