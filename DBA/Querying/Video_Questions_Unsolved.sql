@@ -217,18 +217,55 @@ where City = "Coimbatore"
 order by Customer_Name;
 
 -- -----------------------------------------------------------------------------------------------------------------
+
+SELECT CONCAT(
+    UPPER(SUBSTRING(name, 1, 1)),  -- Capitalize the first letter of the first name
+    LOWER(SUBSTRING(name, 2, LOCATE(' ', name) - 1)), -- Lowercase the rest of the first name
+    ' ',  -- Add a space between the first and last names
+    UPPER(SUBSTRING(name, LOCATE(' ', name) + 1, 1)),  -- Capitalize the first letter of the last name
+    LOWER(SUBSTRING(name, LOCATE(' ', name) + 2)) -- Lowercase the rest of the last name
+) AS camel_case_name
+FROM (SELECT 'ANKIT SALIAN' AS name) AS temp;
+
 -- String and date-time functions
 
 -- 1. Print the customer names in proper case.
 
+select Customer_Name, concat(
+	upper(substring(Customer_Name, 1, 1)),
+    lower(substring(Customer_Name, 2, locate(" ", Customer_Name) -1)),
+    " ",
+    upper(substring(Customer_Name, locate(" ", Customer_Name) + 1, 1)),
+    lower(substring(Customer_Name, locate(" ", Customer_Name) + 2))
+) as Camel_Cased_Names
+from cust_dimen;
+
 -- 2. Print the product names in the following format: Category_Subcategory.
+
+select concat(Product_Category, "_", Product_Sub_Category) as Category_Subcategory
+from prod_dimen;
 
 -- 3. In which month were the most orders shipped?
 
+select month(Ship_Date) as Month, count(Ship_id) as Orders_shipped from shipping_dimen
+group by Month
+order by Orders_shipped desc
+limit 1;
+
 -- 4. Which month and year combination saw the most number of critical orders?
+
+select year(Ship_Date) as Year, month(Ship_Date) as Month, count(Ship_id) as Orders_shipped from shipping_dimen
+group by Year, Month
+order by Orders_shipped desc
+limit 1;
+
 
 -- 5. Find the most commonly used mode of shipment in 2011.
 
+select Ship_Mode, count(Ship_Mode) as Frequency from shipping_dimen
+group by Ship_Mode
+order by Frequency desc
+limit 1;
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- Regular Expressions
