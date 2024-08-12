@@ -339,10 +339,18 @@ with lowest_priorty as (
 where day(Order_Date) between 1 and 15;
 
 -- -----------------------------------------------------------------------------------------------------------------
+use market_star_schema;
 -- Views
 
 -- 1. Create a view to display the sales amounts, the number of orders, profits made and the shipping costs of all
 -- orders. Query it to return all orders which have a profit of greater than 1000.
+
+create view orderInfo as (
+	select * from market_fact_full
+);
+
+select * from orderInfo 
+where Profit > 1000;
 
 -- 2. Which year generated the highest profit?
 
@@ -353,24 +361,73 @@ where day(Order_Date) between 1 and 15;
 
 -- 1. Print the product categories and subcategories along with the profits made for each order.
 
+select p.Product_Category, p.Product_Sub_Category, m.Profit
+from market_fact_full m
+inner join prod_dimen p
+on m.Prod_id = p.Prod_id; 
+
 -- 2. Find the shipment date, mode and profit made for every single order.
+
+select s.Ship_Date, s.Ship_Mode, m.Profit
+from market_fact_full m
+inner join shipping_dimen s
+on m.Ship_id = s.Ship_id;
 
 -- 3. Print the shipment mode, profit made and product category for each product.
 
+select s.Ship_Mode, m.Profit, p.Product_Category
+from market_fact_full m
+inner join shipping_dimen s
+on m.Ship_id = s.Ship_id
+inner join prod_dimen p
+on m.Prod_id = p.Prod_id;
+
 -- 4. Which customer ordered the most number of products?
+
+select c.Customer_Name, sum(m.Order_Quantity) as Total_Orders from cust_dimen c
+inner join market_fact_full m
+on c.Cust_id = m.Cust_id
+group by c.Customer_Name
+order by Total_Orders desc
+limit 1;
 
 -- 5. Selling office supplies was more profitable in Delhi as compared to Patna. True or false?
 
+select c.City, sum(m.Profit) as Total_Profit from cust_dimen c
+right join market_fact_full m
+on c.Cust_id = m.Cust_id
+inner join prod_dimen p
+using (Prod_id)
+where c.City in ("Delhi", "Patna") and p.Product_Category = "OFFICE SUPPLIES"
+group by c.City
+order by Total_Profit desc;
+
 -- 6. Print the name of the customer with the maximum number of orders.
+
+select c.Customer_Name, count(m.Ord_id) as Total_Orders from cust_dimen c
+inner join market_fact_full m
+on c.Cust_id = m.Cust_id
+group by c.Customer_Name
+order by Total_Orders desc
+limit 1;
 
 -- 7. Print the three most common products.
 
+select p.Prod_id, count(m.Ord_id) as Total_Orders from prod_dimen p
+inner join market_fact_full m
+on p.Prod_id = m.Prod_id
+group by p.Prod_id
+order by Total_Orders desc
+limit 3;
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- Outer Join
 
 -- 1. Return the order ids which are present in the market facts table.
 
+select Ord_id from market_fact_full;
+
+select * from prod_dimen;
 -- Execute the below queries before solving the next question.
 create table manu (
 	Manu_Id int primary key,
@@ -392,7 +449,21 @@ where Product_Category = 'technology';
 
 -- 2. Display the products sold by all the manufacturers using both inner and outer joins.
 
+select m.Manu_Name, p.Product_Category from manu m
+inner join prod_dimen p
+using (Manu_Id);
+
+select m.Manu_Name, p.Product_Category from manu m
+left join prod_dimen p
+using (Manu_Id);
+
 -- 3. Display the number of products sold by each manufacturer.
+
+select m.Manu_Name, count(p.Prod_id) as Product_Sold from manu m
+left join prod_dimen p
+using (Manu_Id)
+group by m.Manu_Name
+order by Product_Sold desc;
 
 -- 4. Create a view to display the customer names, segments, sales, product categories and
 -- subcategories of all orders. Use it to print the names and segments of those customers who ordered more than 20
@@ -418,14 +489,76 @@ where Product_Category = 'technology';
 
 -- 1. Rank the orders made by Aaron Smayling in the decreasing order of the resulting sales.
 
+select 
+	c.Customer_Name,
+    m.Ord_id,
+    round(m.Sales) as rounded_sales,
+    rank() over(order by sales desc) as sales_rank
+from market_fact_full m
+inner join cust_dimen c
+using (Cust_id)
+where Customer_Name = "Aaron Smayling";
+
+-- top 10 sales by Aaron Smayling
+
+with sales_ranking as (
+	select 
+		c.Customer_Name,
+		m.Ord_id,
+		round(m.Sales) as rounded_sales,
+		rank() over(order by sales desc) as sales_rank
+	from market_fact_full m
+	inner join cust_dimen c
+	using (Cust_id)
+	where Customer_Name = "Aaron Smayling"
+) 
+select * from sales_ranking
+where sales_rank <= 10;
+
 -- 2. For the above customer, rank the orders in the increasing order of the discounts provided. Also display the
 -- dense ranks.
 
+select 
+	c.Customer_Name,
+    m.Ord_id,
+    m.Discount,
+    rank() over(order by m.Discount desc) as discount_rank,
+    dense_rank() over(order by m.Discount desc) as discount_dense_rank
+from market_fact_full m
+inner join cust_dimen c
+using (Cust_id)
+where Customer_Name = "Aaron Smayling";
+
 -- 3. Rank the customers in the decreasing order of the number of orders placed.
+
+select 
+	c.Customer_Name,
+    count(distinct Ord_id) as Total_Orders,
+    rank() over (order by count(distinct Ord_id) desc) as rank_orders,
+    dense_rank() over (order by count(distinct Ord_id) desc) as dense_rank_orders,
+    row_number() over (order by count(distinct Ord_id) desc) as row_number_orders
+from market_fact_full m
+inner join cust_dimen c
+using (Cust_id)
+group by c.Customer_Name;
 
 -- 4. Create a ranking of the number of orders for each mode of shipment based on the months in which they were
 -- shipped. 
 
+with shipping_summary as (
+	select
+		Ship_Mode,
+		month(Ship_Date) as Month,
+		count(1) as Total_shipments
+	from shipping_dimen
+	group by Ship_Mode, month(Ship_Date)
+)
+select 
+	*,
+    rank() over(partition by Ship_Mode order by Total_shipments desc) as shipping_rank,
+    dense_rank() over(partition by Ship_Mode order by Total_shipments desc) as shipping_dense_rank,
+    row_number() over(partition by Ship_Mode order by Total_shipments desc) as shipping_row_number
+from shipping_summary;
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- Named Windows
@@ -433,12 +566,40 @@ where Product_Category = 'technology';
 -- 1. Rank the orders in the increasing order of the shipping costs for all orders placed by Aaron Smayling. Also
 -- display the row number for each order.
 
+select 
+	m.Ord_id, 
+    m.Shipping_Cost,
+    rank() over w as shipping_rank,
+    dense_rank() over w as shipping_dense_rank,
+    row_number() over w as shipping_row_number
+from market_fact_full m
+inner join cust_dimen c
+using (Cust_id)
+where c.Customer_Name = "Aaron Smayling"
+window w as (order by m.Shipping_Cost desc);
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- Frames
 
 -- 1. Calculate the month-wise moving average shipping costs of all orders shipped in the year 2011.
-
+WITH shipping_details AS (
+SELECT 
+	MONTH(s.Ship_Date) as Months, 
+    SUM(m.Shipping_Cost) as Daily_Cost
+FROM market_fact_full m
+INNER JOIN shipping_dimen s
+USING (Ship_id)
+where YEAR(s.Ship_Date) = 2011
+GROUP BY Months
+ORDER BY Months
+)
+SELECT
+	*,
+    SUM(Daily_Cost) OVER w1 AS running_total,
+    AVG(Daily_Cost) OVER w2 AS running_avg
+FROM shipping_details
+WINDOW w1 as (ORDER BY Months ASC ROWS unbounded preceding),
+	   w2 as (ORDER BY Months ASC ROWS 3 preceding);
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- Session: Programming Constructs in Stored Functions and Procedures
