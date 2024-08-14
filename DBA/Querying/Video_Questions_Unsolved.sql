@@ -606,7 +606,29 @@ WINDOW w1 as (ORDER BY Months ASC ROWS unbounded preceding),
 -- IF Statements
 
 -- 1. Classify an order as 'Profitable' or 'Not Profitable'.
+-- DELIMITER $$
 
+-- create function isProfitable(profit int)
+-- 	returns varchar(30) deterministic
+--     
+-- begin 
+--     
+--     declare message varchar(30);
+--     
+--     if profit < 0 then
+-- 		set message = 'Not Profitable';
+-- 	else 
+-- 		set message = 'Profitable';
+-- 	end if;
+--     
+--     return message;
+-- end;
+-- $$
+-- DELIMITER ;
+
+select 
+	isProfitable(Profit) as "isProfitable"
+from market_fact_full;
 
 -- -----------------------------------------------------------------------------------------------------------------
 -- CASE Statements
@@ -617,12 +639,42 @@ WINDOW w1 as (ORDER BY Months ASC ROWS unbounded preceding),
 --    Profits between 0 and 500: Decent profit
 --    Profits greater than 500: Great profit
 
+select 
+	Market_fact_id,
+    Profit,
+    case 
+		when profit < -500 then "Huge Loss"
+        when profit between -500 and 0 then "Bearable Loss"
+        when profit between 0 and 500 then "Decent profit"
+        else "Great profit"
+	end as Profit_Type
+from market_fact_full;
+
 -- 2. Classify the customers on the following criteria (TODO)
 --    Top 20% of customers: Gold
 --    Next 35% of customers: Silver
 --    Next 45% of customers: Bronze
 
-
+with cust_criteria as 
+(
+	select
+		c.Cust_id,
+		c.Customer_Name,
+		round(sum(sales)) as total_sales,
+		percent_rank() over (order by round(sum(sales)) desc) as perc_rank
+	from market_fact_full m
+	left join cust_dimen c
+	using (Cust_id)
+	group by c.Cust_id
+)
+select 
+	*,
+    case
+		when perc_rank <= 0.2 then "Gold"
+        when perc_rank <= 0.35 then "Silver"
+        else "Bronze"
+	end as Criteria
+from cust_criteria;
 -- -----------------------------------------------------------------------------------------------------------------
 -- Stored Functions
 
