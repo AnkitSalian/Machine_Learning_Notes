@@ -1,3 +1,6 @@
 [submodule "LendingClubCaseStudy"]
 	path = LendingClubCaseStudy
 	url = https://github.com/AnkitSalian/LendingClubCaseStudy
+[submodule "BikeSharingCaseStudy"]
+	path = BikeSharingCaseStudy
+	url = https://github.com/AnkitSalian/BikeSharingCaseStudy
